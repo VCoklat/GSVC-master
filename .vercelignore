@@ -1,0 +1,9 @@
+# Situs statis GSVC Web saja; jangan biarkan Vercel mendeteksi proyek Python riset.
+*.py
+*.ipynb
+*.sh
+reqirements.txt
+requirements.txt
+pyproject.toml
+gsplat/
+img/

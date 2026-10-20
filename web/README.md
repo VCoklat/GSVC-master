@@ -7,6 +7,6 @@ Demo kompresi video 2D Gaussian Splatting yang berjalan sepenuhnya di peramban (
 
 Build kernel (cukup clang, tidak perlu Emscripten): `./build.sh`
 Jalankan lokal: `cd public && python3 -m http.server 8000`
-Deploy Vercel: import repo, Root Directory = `web` (konfigurasi di `vercel.json`, tanpa build step).
+Deploy Vercel: import repo (branch `web-demo`). Bisa dengan Root Directory default (pakai `vercel.json` di root, output `web/public`) atau Root Directory = `web`. Framework preset: Other.
 
 Ini implementasi ringan untuk demo, bukan port kode resmi; pada resolusi kecil di CPU hasilnya di bawah JPEG.

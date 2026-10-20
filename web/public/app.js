@@ -11,7 +11,7 @@ let results = [];
 async function loadWasm() {
   const { instance } = await WebAssembly.instantiateStreaming(fetch('gs.wasm'));
   K = instance.exports;
-  $('status').textContent = `WebAssembly siap (maks ${K.max_gaussians()} splat, ${K.max_pixels()} piksel).`;
+  $('status').textContent = `WebAssembly ready (max ${K.max_gaussians()} splats, ${K.max_pixels()} pixels).`;
 }
 
 // ---------- frame sources ----------
@@ -227,7 +227,7 @@ function chart() {
     <text x="4" y="${Y(lo) + 4}" font-size="10" fill="${M}">${lo} dB</text>
     <line x1="40" x2="580" y1="160" y2="160" stroke="${M}" stroke-opacity="0.3"/>
     ${line('jpgPsnr', B)}${line('psnr', A)}
-    <text x="420" y="14" font-size="11" fill="${A}">● splat (besar = keyframe)</text>
+    <text x="420" y="14" font-size="11" fill="${A}">● splats (large dot = keyframe)</text>
     <text x="420" y="28" font-size="11" fill="${B}">● JPEG q=0.7</text>`;
 }
 
@@ -242,7 +242,7 @@ function updateStats() {
   $('sJpgSize').textContent = `${(sum('jpgBytes') / 1024).toFixed(1)} KB`;
   $('sBpp').textContent = `${((sum('bytes') * 8) / px).toFixed(3)}`;
   $('sN').textContent = `${results[results.length - 1].n}`;
-  $('rows').innerHTML = results.map((r, i) => `<tr><td>${i}</td><td>${r.type === 'I' ? 'Keyframe' : 'Prediksi'}</td><td>${r.iters}</td><td>${r.n}</td><td>${r.bytes}</td><td>${r.psnr.toFixed(2)}</td><td>${r.jpgBytes}</td><td>${r.jpgPsnr.toFixed(2)}</td><td>${r.ms.toFixed(0)}</td></tr>`).join('');
+  $('rows').innerHTML = results.map((r, i) => `<tr><td>${i}</td><td>${r.type === 'I' ? 'Keyframe' : 'Predicted'}</td><td>${r.iters}</td><td>${r.n}</td><td>${r.bytes}</td><td>${r.psnr.toFixed(2)}</td><td>${r.jpgBytes}</td><td>${r.jpgPsnr.toFixed(2)}</td><td>${r.ms.toFixed(0)}</td></tr>`).join('');
   chart();
 }
 
@@ -255,7 +255,7 @@ async function optimize(iters, lrs, W, H, label) {
       K.render();
       show('cvRec', outImage(W, H));
       drawSplats('cvRec');
-      $('status').textContent = `${label}: iterasi ${i + 1}/${iters}`;
+      $('status').textContent = `${label}: iteration ${i + 1}/${iters}`;
       await sleep();
     }
   }
@@ -276,19 +276,19 @@ async function run() {
   try {
     if ($('source').value === 'file') {
       const f = $('file').files[0];
-      if (!f) { $('status').textContent = 'Pilih file dulu.'; $('run').disabled = false; return; }
-      $('status').textContent = 'Mengambil frame…';
+      if (!f) { $('status').textContent = 'Choose a file first.'; $('run').disabled = false; return; }
+      $('status').textContent = 'Extracting frames…';
       frames = await fileFrames(f, W, nf);
     } else {
       frames = sampleFrames(W, Math.round(W * 0.75), nf);
     }
   } catch (e) {
-    $('status').textContent = 'Gagal membaca file: ' + e;
+    $('status').textContent = 'Could not read file: ' + e;
     $('run').disabled = false;
     return;
   }
   const H = frames[0].height;
-  if (!K.setup(W, H)) { $('status').textContent = 'Resolusi terlalu besar.'; $('run').disabled = false; return; }
+  if (!K.setup(W, H)) { $('status').textContent = 'Resolution too large.'; $('run').disabled = false; return; }
 
   const KEY_LR = [0.25, 0.01, 0.008], P_LR = [0.12, 0.005, 0.004];
   let R = null, prevQ = null, keyLoss = 0;
@@ -300,16 +300,16 @@ async function run() {
     if (f > 0) {
       K.reset_adam();
       K.add_gaussians(Math.max(4, Math.round(n * 0.03)), Math.sqrt((W * H) / n), 1000 + f);
-      if (!(await optimize(itp, P_LR, W, H, `Frame ${f} (prediksi)`))) break;
+      if (!(await optimize(itp, P_LR, W, H, `Frame ${f} (predicted)`))) break;
       iters = itp;
       const loss = K.render();
-      if (loss > keyLoss * 2.5) type = 'I'; // GSVC: keyframe saat galat melonjak
+      if (loss > keyLoss * 2.5) type = 'I'; // GSVC: new keyframe when the error jumps
     } else type = 'I';
 
     if (type === 'I') {
       K.init_gaussians(n, 17 + f);
       if (!(await optimize(Math.round(itk / 2), KEY_LR, W, H, `Frame ${f} (keyframe)`))) break;
-      K.prune(0.3); // buang splat berkontribusi kecil
+      K.prune(0.3); // drop low-contribution splats
       if (!(await optimize(itk - Math.round(itk / 2), KEY_LR, W, H, `Frame ${f} (keyframe)`))) break;
       iters = itk;
     }
@@ -344,7 +344,7 @@ async function run() {
     results.push({ type, iters, n: N, bytes, psnr: psnr(frames[f], rec), jpgBytes: jpg.bytes, jpgPsnr: jpg.psnr, ms: performance.now() - t0, W, H, rec, orig: frames[f], jpg: jpg.img });
     updateStats();
   }
-  $('status').textContent = stop ? 'Dihentikan.' : `Selesai: ${results.length} frame.`;
+  $('status').textContent = stop ? 'Stopped.' : `Done: ${results.length} frames.`;
   $('run').disabled = false;
   $('play').disabled = results.length === 0;
 }
@@ -361,4 +361,4 @@ $('file').onchange = () => { const f = $('file').files[0]; if (f) $('status').te
 $('run').onclick = () => run();
 $('stop').onclick = () => { stop = true; };
 $('play').onclick = () => play();
-loadWasm().catch((e) => { $('status').textContent = 'Gagal memuat WebAssembly: ' + e; });
+loadWasm().catch((e) => { $('status').textContent = 'Failed to load WebAssembly: ' + e; });

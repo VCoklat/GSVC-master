@@ -1,80 +1,80 @@
 <!doctype html>
-<html lang="id">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GSVC Web</title>
-<meta name="description" content="Kompresi video dengan 2D Gaussian Splatting yang berjalan di peramban (WebAssembly)">
+<meta name="description" content="Video compression with 2D Gaussian Splatting, trained in the browser with WebAssembly">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header>
   <h1>GSVC Web</h1>
-  <p>Kompresi video dengan <b>2D Gaussian Splatting</b>, dilatih langsung di peramban dengan WebAssembly. Tidak ada server, tidak ada GPU.</p>
+  <p>Video compression with <b>2D Gaussian Splatting</b>, trained directly in your browser with WebAssembly. No server, no GPU.</p>
 </header>
 
 <main>
   <section class="card controls">
     <div class="row">
-      <label>Sumber
+      <label>Source
         <select id="source">
-          <option value="sample">Video contoh (sintetis)</option>
-          <option value="file">Unggah video / gambar</option>
+          <option value="sample">Sample video (synthetic)</option>
+          <option value="file">Upload video / image</option>
         </select>
       </label>
       <input id="file" type="file" accept="video/*,image/*" hidden>
-      <label>Lebar <select id="width"><option>96</option><option selected>128</option><option>160</option><option>200</option></select> px</label>
-      <label>Splat <input id="ngs" type="number" value="800" min="50" max="6000" step="50"></label>
-      <label>Frame <input id="nframes" type="number" value="12" min="1" max="48"></label>
-      <label>Iterasi keyframe <input id="itk" type="number" value="400" min="20" max="3000" step="20"></label>
-      <label>Iterasi frame-P <input id="itp" type="number" value="60" min="5" max="1000" step="5"></label>
+      <label>Width <select id="width"><option>96</option><option selected>128</option><option>160</option><option>200</option></select> px</label>
+      <label>Splats <input id="ngs" type="number" value="800" min="50" max="6000" step="50"></label>
+      <label>Frames <input id="nframes" type="number" value="12" min="1" max="48"></label>
+      <label>Keyframe iterations <input id="itk" type="number" value="400" min="20" max="3000" step="20"></label>
+      <label>P-frame iterations <input id="itp" type="number" value="60" min="5" max="1000" step="5"></label>
     </div>
     <div class="row">
-      <button id="run" class="primary">▶ Latih &amp; kompres</button>
-      <button id="stop">■ Berhenti</button>
-      <button id="play" disabled>⟲ Putar hasil</button>
-      <label class="check"><input id="showSplats" type="checkbox"> Tampilkan splat</label>
-      <span id="status" class="muted">Memuat WebAssembly…</span>
+      <button id="run" class="primary">▶ Train &amp; compress</button>
+      <button id="stop">■ Stop</button>
+      <button id="play" disabled>⟲ Play result</button>
+      <label class="check"><input id="showSplats" type="checkbox"> Show splats</label>
+      <span id="status" class="muted">Loading WebAssembly…</span>
     </div>
   </section>
 
   <section class="views">
-    <figure class="card"><figcaption>Asli</figcaption><canvas id="cvOrig"></canvas></figure>
-    <figure class="card"><figcaption>Rekonstruksi splat (setelah kuantisasi)</figcaption><canvas id="cvRec"></canvas></figure>
-    <figure class="card"><figcaption>JPEG q=0.7 (pembanding)</figcaption><canvas id="cvJpg"></canvas></figure>
+    <figure class="card"><figcaption>Original</figcaption><canvas id="cvOrig"></canvas></figure>
+    <figure class="card"><figcaption>Splat reconstruction (after quantization)</figcaption><canvas id="cvRec"></canvas></figure>
+    <figure class="card"><figcaption>JPEG q=0.7 (baseline)</figcaption><canvas id="cvJpg"></canvas></figure>
   </section>
 
   <section class="stats">
-    <div class="card stat"><span>PSNR splat</span><b id="sPsnr">–</b></div>
-    <div class="card stat"><span>PSNR JPEG</span><b id="sJpgPsnr">–</b></div>
-    <div class="card stat"><span>Ukuran splat</span><b id="sSize">–</b></div>
-    <div class="card stat"><span>Ukuran JPEG</span><b id="sJpgSize">–</b></div>
-    <div class="card stat"><span>Bit per piksel</span><b id="sBpp">–</b></div>
-    <div class="card stat"><span>Splat aktif</span><b id="sN">–</b></div>
+    <div class="card stat"><span>Splat PSNR</span><b id="sPsnr">–</b></div>
+    <div class="card stat"><span>JPEG PSNR</span><b id="sJpgPsnr">–</b></div>
+    <div class="card stat"><span>Splat size</span><b id="sSize">–</b></div>
+    <div class="card stat"><span>JPEG size</span><b id="sJpgSize">–</b></div>
+    <div class="card stat"><span>Bits per pixel</span><b id="sBpp">–</b></div>
+    <div class="card stat"><span>Active splats</span><b id="sN">–</b></div>
   </section>
 
   <section class="card">
     <h2>Per frame</h2>
-    <svg id="chart" viewBox="0 0 600 180" role="img" aria-label="PSNR dan ukuran per frame"></svg>
+    <svg id="chart" viewBox="0 0 600 180" role="img" aria-label="PSNR and size per frame"></svg>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>#</th><th>Tipe</th><th>Iterasi</th><th>Splat</th><th>Byte splat</th><th>PSNR splat (dB)</th><th>Byte JPEG</th><th>PSNR JPEG (dB)</th><th>Waktu (ms)</th></tr></thead>
+        <thead><tr><th>#</th><th>Type</th><th>Iterations</th><th>Splats</th><th>Splat bytes</th><th>Splat PSNR (dB)</th><th>JPEG bytes</th><th>JPEG PSNR (dB)</th><th>Time (ms)</th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
     </div>
   </section>
 
   <section class="card about">
-    <h2>Cara kerja</h2>
+    <h2>How it works</h2>
     <ol>
-      <li><b>Representasi.</b> Tiap frame dinyatakan sebagai kumpulan Gaussian 2D: posisi, faktor Cholesky kovarians invers, dan warna RGB. Piksel adalah jumlah warna berbobot (accumulated blending), seperti GaussianImage/GSVC.</li>
-      <li><b>Pelatihan di peramban.</b> Render, gradien analitik, dan Adam ditulis dalam C lalu dikompilasi ke WebAssembly (sekitar 7 KB).</li>
-      <li><b>Prediksi temporal.</b> Frame berikutnya mulai dari splat frame sebelumnya, jadi cukup sedikit iterasi; yang disimpan hanya selisih parameternya.</li>
-      <li><b>Tambah dan pangkas splat.</b> Splat baru ditambahkan di area dengan galat tinggi (gerakan atau objek baru); splat berkontribusi kecil dipangkas di keyframe.</li>
-      <li><b>Deteksi keyframe.</b> Bila galat setelah prediksi melonjak dibanding keyframe terakhir, frame dilatih ulang dari awal sebagai keyframe.</li>
-      <li><b>Kuantisasi dan entropi.</b> Posisi dikuantisasi 12 bit, kovarians dan warna 8 bit (rentang per kanal ditetapkan di keyframe). Frame prediksi hanya mengirim selisih yang berarti (dead-zone), lalu semuanya dikompres deflate. PSNR diukur setelah dekuantisasi, persis seperti yang dilihat decoder.</li>
+      <li><b>Representation.</b> Each frame is a set of 2D Gaussians: position, Cholesky factor of the inverse covariance, and an RGB colour. A pixel is the weighted sum of colours (accumulated blending), as in GaussianImage/GSVC.</li>
+      <li><b>Training in the browser.</b> Rendering, analytic gradients and Adam are written in C and compiled to WebAssembly (about 7 KB).</li>
+      <li><b>Temporal prediction.</b> Each frame starts from the previous frame's splats, so only a few iterations are needed and only parameter changes are stored.</li>
+      <li><b>Add and prune.</b> New splats are added where the error is high (motion or new objects); low-contribution splats are pruned at keyframes.</li>
+      <li><b>Keyframe detection.</b> If the error after prediction jumps compared with the last keyframe, the frame is retrained from scratch as a keyframe.</li>
+      <li><b>Quantization and entropy coding.</b> Positions are quantized to 12 bits, covariance and colour to 8 bits (per-channel ranges fixed at the keyframe). Predicted frames send only meaningful changes (dead-zone), and everything is deflate-compressed. PSNR is measured after dequantization, exactly as a decoder would see it.</li>
     </ol>
-    <p class="muted">Demo ini adalah implementasi ringan yang terinspirasi GSVC (Wang, Shi &amp; Ooi, arXiv:2501.12060), bukan port kode resmi. Hasilnya tidak sebanding dengan angka di paper, yang memakai GPU, resolusi penuh, dan kuantisasi yang dipelajari.</p>
+    <p class="muted">This is a lightweight implementation inspired by GSVC (Wang, Shi &amp; Ooi, arXiv:2501.12060), not a port of the official code. Results are not comparable with the paper, which uses a GPU, full resolution and learned quantization.</p>
   </section>
 </main>
 <script type="module" src="app.js"></script>

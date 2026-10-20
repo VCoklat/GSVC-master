@@ -1,5 +1,17 @@
 {
+  "framework": null,
+  "installCommand": "",
   "buildCommand": "",
   "outputDirectory": "public",
-  "headers": [{ "source": "/(.*)\\.wasm", "headers": [{ "key": "Content-Type", "value": "application/wasm" }] }]
+  "headers": [
+    {
+      "source": "/(.*)\\.wasm",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/wasm"
+        }
+      ]
+    }
+  ]
 }
